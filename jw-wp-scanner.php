@@ -4,7 +4,7 @@ Plugin Name: JW Cloud Sites WordPress Scanner
 Plugin URI: http://jacksonwhelan.com/2010/06/cloudsites-wordpress-scanner/
 Description: Scan your WordPress installation for hidden files, backdoors in wp_options, spam links in your posts, and remove world and group permissions from all files. Designed for Rackspace Cloud Sites. Use at your own risk! Activate, and find new page under Tools.
 Author: Jackson Whelan
-Version: 2.2
+Version: 2.3
 Author URI: http://jacksonwhelan.com/
 */
 
@@ -13,11 +13,17 @@ $JWWPScan = new JWWPScan();
 class JWWPScan {
 
 	function JWWPScan() {	
+		global $wp_version;
 		add_action('admin_menu', array(&$this, 'jwwps_create_menu'));
 		add_action("admin_print_scripts", array(&$this, 'jwwps_js_libs'));
 		add_action("admin_print_styles", array(&$this, 'jwwps_style_libs'));
 		add_action('wp_ajax_jwwps_file_contents', array(&$this, 'jwwps_file_contents'));	
 		add_action('wp_ajax_jwwps_delete_option_confirm', array(&$this, 'jwwps_delete_option_confirm'));	
+		$hashes = dirname(__FILE__) . '/hashes-'.$wp_version.'.php';
+		if ( file_exists( $hashes ) ) {
+			include_once( $hashes );
+			define('HASHESLOADED', true);
+		}
 	}
 	
 	function jwwps_create_menu() {
@@ -82,6 +88,10 @@ EOF;
 		if ( ! delete_option($option)) {
 			return FALSE;
 		} else {
+			$out.= "<br /><button onClick=\"parent.tb_remove(); parent.location.reload(1)\">Successfully Deleted - Click to Return</button>";
+			$deleted = get_option('jwwps_option_delete');
+			$deleted = $deleted.$option.date (" | F d Y H:i:s,");
+			update_option('jwwps_option_delete',$deleted);
 			return TRUE;
 		}		
 	}
@@ -117,21 +127,58 @@ EOF;
 		$dir->close();
 		foreach ($entries as $entry) {
 			$fullname = $path . $entry;
+			$relname = str_ireplace(ABSPATH, '', $fullname);			
 			if ($entry != '.' && $entry != '..' && is_dir($fullname)) {
 				  $this->jwwps_find_files($fullname, $pattern, $callback);
 			} else if (is_file($fullname) && preg_match($pattern, $entry)) {
-				  call_user_func($callback, $fullname);
+				  call_user_func($callback, $fullname, $relname, 'Possible hidden file','#fbff61');
 			}
 		}
 	}
 	
-	function jwwps_filerow_output($filename) {	
+	function jwwps_find_nonwp_files($path, $callback) {
+		global $filehashes;
+		$path = rtrim(str_replace("\\", "/", $path), '/') . '/';
+		$matches = Array();
+		$entries = Array();
+		$dir = dir($path);
+		while (false !== ($entry = $dir->read())) {
+			$entries[] = $entry;
+		}
+		$dir->close();
+		foreach ($entries as $entry) {
+			$fullname = $path . $entry;
+			$relname = str_ireplace(ABSPATH, '', $fullname);
+			if ($entry != '.' && $entry != '..' && $entry != 'uploads' && is_dir($fullname)) {
+				  $this->jwwps_find_nonwp_files($fullname, array(&$this,'jwwps_filerow_output'));
+			} elseif (is_file($fullname)) {
+				if(!isset($filehashes[$relname])) {
+				  call_user_func($callback, $fullname, $relname,'Not a core file','#fbff61');
+				} elseif(isset($filehashes[$relname]) && $filehashes[$relname] != md5_file($fullname)) {
+				  call_user_func($callback, $fullname, $relname,'Modified core file','#fd7a7a');
+				}
+			}
+		}
+	}
+	
+	function jwwps_filerow_output($filename, $displayname = '', $extrainfo = '', $alert = '') {	
 		$siteurl = get_option('siteurl');
 		$filetime = date ("F d Y H:i:s.", filemtime($filename));
 		$fileperms = substr(sprintf(".%o.", fileperms($filename)), -4);
+		if($alert) {
+			$alertclass = ' style="background-color:'.$alert.'"';
+		}
+		if($displayname) {
+			$filedisplayname = $displayname;
+		} else {
+			$filedisplayname = $filename;
+		}
+		if($extrainfo) {
+			$extrainfo = '<br/>'.$extrainfo;
+		}
 $out = <<<EOF
-	<tr><td><a class="thickbox" href="$siteurl/wp-admin/admin-ajax.php?action=jwwps_file_contents&width=600&height=800&file=$filename&keepThis=true&TB_iframe=true" title="View File">
-	$filename</a></td><td>Last Modified: $filetime - $fileperms</td><td class="desc"><a class="thickbox button" href="$siteurl/wp-admin/admin-ajax.php?action=jwwps_file_contents&width=600&height=800&file=$filename&keepThis=true&TB_iframe=true" title="View File">Inspect File Contents / Delete</a></td></tr>
+	<tr$alertclass><td><a class="thickbox" href="$siteurl/wp-admin/admin-ajax.php?action=jwwps_file_contents&width=600&height=800&file=$filename&keepThis=true&TB_iframe=true" title="View File">
+	$filedisplayname</a>$extrainfo</td><td>$filetime | $fileperms</td><td class="desc"><a class="thickbox button" href="$siteurl/wp-admin/admin-ajax.php?action=jwwps_file_contents&width=600&height=800&file=$filename&keepThis=true&TB_iframe=true" title="View File">Inspect File Contents / Delete</a></td></tr>
 EOF;
 		echo $out; 
 	}
@@ -256,14 +303,24 @@ EOF;
 		<?php 
 		global $wpdb;
 		$siteurl = get_option('siteurl');
-		$optionscan = $wpdb->get_results("SELECT * FROM $wpdb->options WHERE (option_id LIKE '%base64_decode%' OR blog_id LIKE '%base64_decode%' OR option_name LIKE '%base64_decode%' OR option_value LIKE '%base64_decode%' OR autoload LIKE '%base64_decode%' OR option_id LIKE '%edoced_46esab%' OR blog_id LIKE '%edoced_46esab%' OR option_name LIKE '%edoced_46esab%' OR option_value LIKE '%edoced_46esab%' OR autoload LIKE '%edoced_46esab%' OR option_name LIKE 'wp_check_hash' OR option_name LIKE 'class_generic_support' OR option_name LIKE 'widget_generic_support' OR option_name LIKE 'ftp_credentials' OR option_name LIKE 'fwp' OR option_name LIKE 'rss_%') order by option_id");
+		$optionscan = $wpdb->get_results("SELECT * FROM $wpdb->options WHERE (option_id LIKE '%base64_decode%' OR blog_id LIKE '%base64_decode%' OR option_name LIKE '%base64_decode%' OR option_value LIKE '%base64_decode%' OR autoload LIKE '%base64_decode%' OR option_id LIKE '%edoced_46esab%' OR blog_id LIKE '%edoced_46esab%' OR option_name LIKE '%edoced_46esab%' OR option_value LIKE '%edoced_46esab%' OR autoload LIKE '%edoced_46esab%' OR option_name LIKE 'wp_check_hash' OR option_name LIKE 'class_generic_support' OR option_name LIKE 'widget_generic_support' OR option_name LIKE 'ftp_credentials' OR option_name LIKE 'fwp' OR option_name LIKE 'rss_%' AND option_name != 'rss_language' AND option_name != 'rss_use_excerpt') order by option_id");
 		if($optionscan) {
 			foreach ($optionscan as $optionrow) {
 				echo '<tr id="'.$optionrow->option_id.'"><td>'.$optionrow->option_id.'</td><td>'.$optionrow->option_name.'</td><td>'.$optionrow->option_value.'</td><td>'.$optionrow->autoload.'</td><td><a class="thickbox button" href="'.$siteurl.'/wp-admin/admin-ajax.php?action=jwwps_delete_option_confirm&width=400&height=300&option_to_delete='.$optionrow->option_name.'&option_id_delete='.$optionrow->option_id.'&keepThis=true&TB_iframe=true" title="Delete Option" style="margin-top:5px;">Delete Option</a></td></tr>';
 			} 
 		} else { ?>
 			<tr><td colspan="3"><p>Lucky you, no known bad options containing base64_decode (or edoced_46esab) found.</p></td></tr>
-		<?php }	?>
+		<?php }	
+		$deleted = get_option('jwwps_option_delete');
+		if($deleted) {
+			$deletes = explode(',', $deleted);
+			echo '<tr><td colspan="3"><p>Options previously deleted:<br />';
+			foreach($deletes as $delete) {
+				echo $delete.'<br />';
+			}
+			echo '</p></td></tr>';
+		}
+		?>
 		</tbody>
 		</table>
 		
@@ -286,14 +343,29 @@ EOF;
 		</tbody>
 		</table>
 		
-		<h3>Hidden File Scan</h3>
+		<h3>Hidden File & Non-Core File Scan</h3>
 		<table cellspacing="0" class="widefat post fixed">
 		<thead>
-		<tr><th>File</th><th></th><th></th></tr>
+		<tr><th>File</th><th>Last Modification / Permissions</th><th>Inspect / Delete</th></tr>
 		</thead>
 		<tbody>
-		<?php $pattern = '/(\.bak|\.cache|\.old|\.jpg|\.gif|\.png|\.pdf|\.js|class-rss)\.php$/';
+		<?php 
+		// Search for hidden files
+		$pattern = '/(\.bak|\.cache|\.old|\.jpg|\.gif|\.png|\.pdf|\.js|class-rss)\.php$/';
 		$this->jwwps_find_files(ABSPATH, $pattern, array(&$this,'jwwps_filerow_output'));
+		
+		// Search for php files in upload directory
+		$pattern = '/(.*)\.php(.*)$/';
+		$uploaddir = wp_upload_dir();
+		$this->jwwps_find_files($uploaddir['basedir'], $pattern, array(&$this,'jwwps_filerow_output'));
+		
+		// Search for non-core files
+		if('HASHESLOADED') {
+			$this->jwwps_find_nonwp_files(ABSPATH, array(&$this,'jwwps_filerow_output'));
+		} else {
+			echo 'Please upgrade your WordPress installation to 2.9.2 or higher. Skipping non-core file and modified core file scan.';
+		}		
+		// Get previously deleted file list
 		$deleted = get_option('jwwps_file_delete');
 		if($deleted) {
 			$deletes = explode(',', $deleted);
@@ -307,18 +379,19 @@ EOF;
 		</tbody>
 		</table>
 		
-		<h3>File List</h3>
+		<h3>Complete File List</h3>
 		<table cellspacing="0" class="widefat post fixed">
 			<thead>
 				<tr><th><?php echo ABSPATH;?></th></tr>
 			</thead>
 			<tbody>
-				<tr><td><p>Here's a big old listing of all your files and directories. Review for suspicious files, modification dates, file owners, permissions, etc.</p></td></tr>
+				<tr><td><p>Here's a complete listing of all your files and directories. Review for suspicious files, modification dates, file owners, permissions, etc.</p></td></tr>
 				<tr><td><div class="scroll" style="height:500px; overflow:scroll;">
 <pre><?php passthru('ls '.ABSPATH.' -lR');?></pre>
 				</div></td></tr>
 			</tbody>
 		</table>
 	</div>
-	<?php }
+	<?php
+	}
 } ?>
