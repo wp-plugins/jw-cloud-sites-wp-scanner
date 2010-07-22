@@ -2,19 +2,29 @@
 
 Contributors:      madjax
 Plugin Name:       Cloud Sites WP Scanner
-Plugin URI:        (web page for plugin)
+Plugin URI:        http://jacksonwhelan.com/plugins/cloud-sites-wp-scanner/
 Tags:              Rackspace, Cloud Sites, security, permissions, hack
 Requires at least: 2.9.2 
 Tested up to:      3.0
-Stable tag:        2.2
-Version:           2.2
+Stable tag:        2.3
+Version:           2.3
 
 Some tools for securing WordPress on Rackspace's Cloud Sites hosting.
 
 == Description ==
 
-With this plugin you can easily adjust your file permissions on Rackspace Cloud Sites hosting for a more secure installation. You can remove write permissions, and then revert when needed to allow upgrading, theme and plugin installation. Also includes a few extra tools to look for and eliminate other common exploits in the cloud, looking for hidden php files, auto loading options with malicious code, and posts/pages injected with javascript.
+With this plugin you can easily adjust your file permissions on Rackspace Cloud Sites hosting for a more secure installation. You can remove write permissions, and then revert when needed to allow upgrading, theme and plugin installation. Also includes a few extra tools to look for and eliminate other common exploits in the cloud, looking for hidden php files, non-core files, modified core files, auto loading options with malicious code, and posts/pages injected with javascript.
 
 == Installation ==
 
 Activate plugin, visit Tools > JW CS+WP Scanner.
+
+== Changelog ==
+
+= 2.3 =
+* Eliminate false positives from option table scan.
+* Include file hashes from Exploit Scanner to detect non-core files, and modified core files.
+* Track deleted options in addition to deleted files.
+
+= 2.2 =
+* First public release.
