@@ -1,4 +1,5 @@
 <?php
+global $filehashes;
 $filehashes = array( 
 'wp-includes/default-filters.php' => 'a3a05041a3f98b43be0b08cfc3963358',
 'wp-includes/class-snoopy.php' => '5124e56fe7317607f6eb2242ede7630f',

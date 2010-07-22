@@ -1,4 +1,5 @@
 <?php
+global $filehashes;
 $filehashes = array( 
 'index.php' => '67395ee44d8a23a998eaa8df023d4d7a',
 'license.txt' => '4d1f767863b6a3985f43e9401b0739f6',
