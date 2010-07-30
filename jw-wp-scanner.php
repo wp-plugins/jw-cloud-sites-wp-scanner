@@ -2,9 +2,9 @@
 /*
 Plugin Name: JW Cloud Sites WordPress Scanner
 Plugin URI: http://jacksonwhelan.com/2010/06/cloudsites-wordpress-scanner/
-Description: Scan your WordPress installation for hidden files, backdoors in wp_options, spam links in your posts, and remove world and group permissions from all files. Designed for Rackspace Cloud Sites. Use at your own risk! Activate, and find new page under Tools.
+Description: Scan your WordPress installation for hidden files, backdoors in wp_options, spam links in your posts, modified core files, and remove world and group permissions from all files. Designed for Rackspace Cloud Sites. Use at your own risk! Activate, and find new page under Tools.
 Author: Jackson Whelan
-Version: 2.3.1
+Version: 2.3.2
 Author URI: http://jacksonwhelan.com/
 */
 
@@ -23,6 +23,7 @@ class JWWPScan {
 		if ( file_exists( $hashes ) ) {
 			include_once( $hashes );
 			define('HASHESLOADED', true);
+			define('HASHESFILE', $hashes);
 		}
 	}
 	
@@ -331,24 +332,29 @@ EOF;
 		</thead>
 		<tbody>
 		<?php 
-		global $wpdb;
-		$postscan = $wpdb->get_results("SELECT * FROM $wpdb->posts WHERE (post_content LIKE '%base64_decode%' OR post_content LIKE '%<script%' OR post_content LIKE '%edoced_46esab%' OR post_content LIKE '%visibility:%' OR post_content LIKE '%display:%' OR post_content LIKE '%visibility :%' OR post_content LIKE '%display :%' OR post_content LIKE '%<iframe%')");
-		if($postscan) {
-			foreach ($postscan as $postrow) {
-				echo '<tr><td><a href="post.php?post='.$postrow->ID.'&action=edit">'.$postrow->ID.'</a></td><td>'.$postrow->post_title.' / '.$postrow->post_status.'</td><td><pre style="white-space:normal;">'.htmlentities($postrow->post_content).'</pre></td></tr>';
-			}
-		} else { ?>
-			<tr><td colspan="3"><p>Lucky you, no posts containing base64_decode (or edoced_46esab), script tags, hidden css elements or iframes found.</p></td></tr>
-		<?php }	?>
+		if($_GET['jwwps-run-postscan'] == 'true') {
+			global $wpdb;
+			$postscan = $wpdb->get_results("SELECT * FROM $wpdb->posts WHERE (post_content LIKE '%base64_decode%' OR post_content LIKE '%<script%' OR post_content LIKE '%edoced_46esab%' OR post_content LIKE '%visibility:%' OR post_content LIKE '%display:%' OR post_content LIKE '%visibility :%' OR post_content LIKE '%display :%' OR post_content LIKE '%<iframe%')");
+			if($postscan) {
+				foreach ($postscan as $postrow) {
+					echo '<tr><td><a href="post.php?post='.$postrow->ID.'&action=edit">'.$postrow->ID.'</a></td><td>'.$postrow->post_title.' / '.$postrow->post_status.'</td><td><pre style="white-space:normal;">'.htmlentities($postrow->post_content).'</pre></td></tr>';
+				}
+			} else { ?>
+				<tr><td colspan="3"><p>Lucky you, no posts containing base64_decode (or edoced_46esab), script tags, hidden css elements or iframes found.</p></td></tr>
+			<?php }
+		} else {
+			echo '<tr><td colspan="3"><p><a href="tools.php?jwwps-run-postscan=true&page=jwwps">Click here</a> to scan for posts containing base64_decode (or edoced_46esab), script tags, hidden css elements or iframes.</p></td></tr>';
+		} ?>		
 		</tbody>
 		</table>
 		
-		<h3>Hidden File & Non-Core File Scan</h3>
+		<h3>Hidden Files & Non-Core/Modified Core File Scan</h3>
 		<table cellspacing="0" class="widefat post fixed">
 		<thead>
 		<tr><th>File</th><th>Last Modification / Permissions</th><th>Inspect / Delete</th></tr>
 		</thead>
 		<tbody>
+		<tr><td colspan="3"><p>Searching for hidden files, and .php files in upload directory.</p></td></tr>
 		<?php 
 		// Search for hidden files
 		$pattern = '/(\.bak|\.cache|\.old|\.jpg|\.gif|\.png|\.pdf|\.js|class-rss)\.php$/';
@@ -360,11 +366,17 @@ EOF;
 		$this->jwwps_find_files($uploaddir['basedir'], $pattern, array(&$this,'jwwps_filerow_output'));
 		
 		// Search for non-core files
-		if('HASHESLOADED') {
-			$this->jwwps_find_nonwp_files(ABSPATH, array(&$this,'jwwps_filerow_output'));
+		if($_GET['jwwps-run-noncore'] == 'true') {
+			if('HASHESLOADED') {
+				$this->jwwps_find_nonwp_files(ABSPATH, array(&$this,'jwwps_filerow_output'));
+				echo '<tr><td colspan="3"><p>Comparing files against '.HASHESFILE.'</p></td></tr>';
+			} else {
+				echo '<tr><td colspan="3"><p>Please upgrade your WordPress installation to 2.9.2 or higher. Skipping non-core file and modified core file scan.</p></td></tr>';
+			}
 		} else {
-			echo 'Please upgrade your WordPress installation to 2.9.2 or higher. Skipping non-core file and modified core file scan.';
+			echo '<tr><td colspan="3"><p><a href="tools.php?jwwps-run-noncore=true&page=jwwps">Click here</a> to highlight ALL non-core files in your installation directory. This will include your plugins and themes... so the signal to noise ratio can be a bit off. Better safe than sorry. Core files will be compared against a known file hash to check for modifications.</p></td></tr>';
 		}		
+		
 		// Get previously deleted file list
 		$deleted = get_option('jwwps_file_delete');
 		if($deleted) {
