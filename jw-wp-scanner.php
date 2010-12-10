@@ -4,7 +4,7 @@ Plugin Name: JW Cloud Sites WordPress Scanner
 Plugin URI: http://jacksonwhelan.com/2010/06/cloudsites-wordpress-scanner/
 Description: Scan your WordPress installation for hidden files, backdoors in wp_options, spam links in your posts, modified core files, and remove world and group permissions from all files. Designed for Rackspace Cloud Sites. Use at your own risk! Activate, and find new page under Tools.
 Author: Jackson Whelan
-Version: 2.3.2
+Version: 2.3.3
 Author URI: http://jacksonwhelan.com/
 */
 
