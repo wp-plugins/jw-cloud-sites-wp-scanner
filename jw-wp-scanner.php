@@ -4,7 +4,7 @@ Plugin Name: JW Cloud Sites WordPress Scanner
 Plugin URI: http://jacksonwhelan.com/2010/06/cloudsites-wordpress-scanner/
 Description: Scan your WordPress installation for hidden files, backdoors in wp_options, spam links in your posts, modified core files, and remove world and group permissions from all files. Designed for Rackspace Cloud Sites. Use at your own risk! Activate, and find new page under Tools.
 Author: Jackson Whelan
-Version: 2.3.4
+Version: 2.3.6
 Author URI: http://jacksonwhelan.com/
 */
 
@@ -255,8 +255,8 @@ EOF;
 	<div class="wrap">
 		<div id="icon-tools" class="icon32"></div>
 		<h2>JW Cloud Sites WordPress Scanner</h2>
-	   	<p>Here are some directories and files with current and recommended permissions. These permissions have worked for me so far on Cloud Sites, I cannot guarantee or speak to the fitness of this approach on other hosts. As with all freebies on the internet, please use at your own risk. Back up and back up often - I recommend <a href="http://www.webdesigncompany.net/automatic-wordpress-backup/">Automatic WordPress Backup</a>. Be sure to check out <a href="http://sucuri.net/">Sucuri</a> monitoring services as well to stay on top of these parasites.</p>
-	   	
+	   	<p>Here are some directories and files with current and recommended permissions. These permissions have worked for me so far on Rackspace Cloud Sites, I cannot guarantee or speak to the fitness of this approach on other hosts. As with all freebies on the internet, please use at your own risk. Back up and back up often - I recommend <a href="http://www.webdesigncompany.net/automatic-wordpress-backup/">Automatic WordPress Backup</a>. Be sure to check out <a href="http://sucuri.net/">Sucuri</a> monitoring services as well to stay on top of these parasites.</p>
+	   	<p><strong>Note: This plugin is designed for Rackspace Cloud Sites hosting only.</strong></p>
 		<h3>File Permissions<?php 
 		if(get_option('jwwps_is_basic')) { 
 			echo ' - Basic';
