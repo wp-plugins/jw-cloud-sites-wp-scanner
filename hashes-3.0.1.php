@@ -1,5 +1,4 @@
 <?php
-global $filehashes;
 $filehashes = array(
 'wp-commentsrss2.php' => '96d5824afd7896c0913b9c43de4dd067',
 'wp-links-opml.php' => '646e42f35d69a3bc6b2d6fc00a6f0dc1',
