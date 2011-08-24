@@ -1,4 +1,5 @@
 <?php
+global $filehashes;
 $filehashes = array( 
 'wp-links-opml.php' => '646e42f35d69a3bc6b2d6fc00a6f0dc1',
 'wp-register.php' => '287dc5ab04cb97e1a45873f1c87525ca',
